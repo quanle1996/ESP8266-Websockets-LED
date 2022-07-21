@@ -10,7 +10,7 @@
 #include <FastLED.h>
 
 const char* ssid = "TOTOLINK_X5000R"; // name of your network
-const char* password = "quan1234"; // your network password
+const char* password = "xxx"; // your network password
 
 IPAddress Ip(192,168,0,24); // IP address for ESP
 IPAddress Gateway(192,168,0,1); // IP address of the gateway (router)
