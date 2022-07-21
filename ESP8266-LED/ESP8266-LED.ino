@@ -4,28 +4,32 @@
 #include <ESP8266WebServer.h>
 #include <WebSocketsServer.h>
 #include <FS.h>
+#include <cstdlib>
+#define FASTLED_ESP8266_NODEMCU_PIN_ORDER
+#define ESP8266_SPI
 #include <FastLED.h>
 
-const char* ssid = "ssid"; // имя вашей сети
-const char* password = "password"; // пароль вашей сети
+const char* ssid = "TOTOLINK_X5000R"; // name of your network
+const char* password = "quan1234"; // your network password
 
-IPAddress Ip(192,168,1,10); // IP-адрес для ESP
-IPAddress Gateway(192,168,1,1); // IP-адрес шлюза (роутера)
-IPAddress Subnet(255,255,255,0); // маска подсети, диапазон IP-адресов в локальной сети
+IPAddress Ip(192,168,0,24); // IP address for ESP
+IPAddress Gateway(192,168,0,1); // IP address of the gateway (router)
+IPAddress Subnet(255,255,255,0); // subnet mask, range of IP addresses in the local network
  
-#define LED_COUNT 60 // число пикселей в ленте
-#define LED_DT 2    // пин, куда подключен DIN ленты (номера пинов ESP8266 совпадает с Arduino)  
+#define LED_COUNT 24 // number of led in the tape
+#define LED_DT 2 // pin where is connected the DIN strips (number of pins coincides with the ESP8266 Arduino)
+#define LEDS FastLED
 
-uint8_t bright = 25; // яркость (0 - 255)
-uint8_t ledMode = 0; // эффект (0 - 29)
+uint8_t bright = 35; // bright (0 - 255)
+uint8_t ledMode = 0; // trigger effect (0 - 29)
 
-uint8_t flag = 1; // флаг отмены эффекта
+uint8_t flag = 1; // effect undo flag
 
 CRGBArray<LED_COUNT> leds;
 
-uint8_t delayValue = 20; // задержка
-uint8_t stepValue = 10; // шаг по пикселям
-uint8_t hueValue = 0; // тон цвета
+uint8_t delayValue = 20; // delay
+uint8_t stepValue = 10; // pixel pitch
+uint8_t hueValue = 0; // color tone
 
 // инициализация websocket на 81 порту
 WebSocketsServer webSocket(81);
@@ -122,9 +126,9 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
            uint32_t rgb = (uint32_t) strtol((const char *) &payload[1], NULL, 16);
           
            //преобразуем 24 бит по 8 бит на канал 
-           uint8_t r = abs(0 + (rgb >> 16) & 0xFF);
-           uint8_t g = abs(0 + (rgb >>  8) & 0xFF);
-           uint8_t b = abs(0 + (rgb >>  0) & 0xFF);
+           uint8_t r = abs(int(0 + (rgb >> 16) & 0xFF));
+           uint8_t g = abs(int(0 + (rgb >>  8) & 0xFF));
+           uint8_t b = abs(int(0 + (rgb >>  0) & 0xFF));
            
            Serial.print("ColorPicker: ");
            Serial.print(r);
