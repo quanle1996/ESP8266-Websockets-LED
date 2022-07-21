@@ -1,40 +1,40 @@
-# Управление адресной лентой ws2812b с помощью ESP8266 через Web интерфэйс
+# Management of ws2812b address tape using ESP8266 via Web interface
 ![prev](https://i.ibb.co/fxM5H6V/led-min.jpg)
-## Описание проекта
-##### Управление: 
-* По WiFi или по Ethernet порту
+## Description of the project
+##### Management:
+* By WiFi or Ethernet port
 
-##### Особенности:
-- Постоянное TCP соединение
-- Длительность срабатывания при наихудшем сигнале WiFi не более 500мс 
-- Возможность асинхронного управления
-- Удобный colorpicker ([автор](https://github.com/NC22/HTML5-Color-Picker))
-- Имееться **29**  крутых эффектов
-- Плавная смена цветов
-- Плавная регулировка яркости
+##### Peculiarities:
+- Permanent TCP connection
+- Duration of operation with the worst WiFi signal is not more than 500ms
+- Possibility of asynchronous control
+- Convenient colorpicker ([author](https://github.com/NC22/HTML5-Color-Picker))
+- There are **29** cool effects
+- Smooth color change
+- Smooth brightness control
 
-## Материалы и компоненты
-- ESP8266
-- ws2812b
-- резистор от перегрузки пина ESP (желательно)
-- 5-вольтовый источник питания (емкость в зависимости от кол-ва пикселей в ленте)
-- провода перемычки
-- Один из последних версий Arduino IDE вместе с :
-   - [Пакеты для ESP8266](https://github.com/esp8266/Arduino)
-   - [ESP8266FS плагин файловой системы](https://github.com/esp8266/arduino-esp8266fs-plugin) (используется для загрузки HTML, JS, CSS файлов в ESP)
-    - Библиотека Websockets (доступно из менеджера библиотек)
-    - Библиотека FastLed (доступно из менеджера библиотек)
-## Схема подключения
+## Materials and components
+-ESP8266
+-ws2812b
+- ESP pin overload resistor (optional)
+- 5-volt power supply (capacity depending on the number of pixels in the tape)
+- jumper wires
+- One of the latest versions of the Arduino IDE along with:
+   - [Packages for ESP8266](https://github.com/esp8266/Arduino)
+   - [ESP8266FS filesystem plugin](https://github.com/esp8266/arduino-esp8266fs-plugin) (used to upload HTML, JS, CSS files to ESP)
+    - Websockets library (available from library manager)
+    - FastLed library (available from library manager)
+## Wiring diagram
 ![scheme](https://i.ibb.co/TMm0gJx/esp-ws2812b.png)
-## Установка
-- Подключить ESP8266 к вашему компьютеру
-- Открыть `ESP8266-LED.ino` и обновить сетевые настройки для вашей сети 
-- Загрузить скетч
-- В верхнем меню IDE выберите инструменты - > ESP8266 Sketch Upload, чтобы загрузить веб-файлы из каталога `data`.
-- Откройте монитор последовательного порта (при успешном подключении отобразиться ваш IP).
-- Перейдите по IP-адресу и наслаждайтесь )
+## Installation
+- Connect ESP8266 to your computer
+- Open `ESP8266-LED.ino` and update network settings for your network
+- Upload sketch
+- From the top menu of the IDE, select tools -> ESP8266 Sketch Upload to upload web files from the `data` directory.
+- Open the serial port monitor (if connected successfully, your IP will be displayed).
+- Navigate to IP address and enjoy )
 
-## Aхтунг !
+## Ahtung !
 ![button](https://i.ibb.co/wzt967C/dan.png)
-Отмеченные функции с данным окрасом, имеют длинный цикл и при быстром смене яркости ESP8266 сильно нагружается и могут наблюдаться задержки !
-Рекомендую перед использованием этих функций сначала установить яркость.
+The marked functions with this color have a long cycle and with a quick change in brightness, the ESP8266 is heavily loaded and delays can be observed!
+I recommend that you first set the brightness before using these functions.
