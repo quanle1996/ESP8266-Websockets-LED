@@ -12,23 +12,30 @@
 #include <FastLED.h>
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
+#include <string>
 
 const char *ssid = "Regenesis Studio"; // name of your network
 const char *password = "Pod_00001";    // your network password
 const uint16_t mqtt_port = 1883;
 const char *mqtt_username = "mod_tabui";
 const char *mqtt_password = "mod_tabui";
+const std::string mqtt_prefix = "pod/0000/1.0/mod_lighting/";
 
-IPAddress Mqtt_server(192, 168, 50, 185);
+const std::string mqtt_led_event_level = (mqtt_prefix + "rgb/level/set");
+const char *mqtt_led_level = (mqtt_prefix + "rgb/level/set").c_str();
+const std::string mqtt_led_event_main = (mqtt_prefix + "rgb/main");
+const char *mqtt_led_main = (mqtt_prefix + "rgb/level/set").c_str();
+
+IPAddress Mqtt_server(192, 168, 50, 50);
 IPAddress Ip(192, 168, 50, 24);     // IP address for ESP
 IPAddress Gateway(192, 168, 50, 1); // IP address of the gateway (router)
 IPAddress Subnet(255, 255, 255, 0); // subnet mask, range of IP addresses in the local network
 
-#define LED_COUNT 12 // number of led in the tape
+#define LED_COUNT 60 // number of led in the tape
 #define LED_DT 2     // pin where is connected the DIN strips (number of pins coincides with the ESP8266 Arduino)
 #define LEDS FastLED
 
-uint8_t bright = 35; // bright (0 - 255)
+uint8_t bright = 50; // bright (0 - 255)
 uint8_t ledMode = 0; // trigger effect (0 - 29)
 
 uint8_t flag = 1; // effect undo flag
@@ -46,6 +53,8 @@ ESP8266WebServer server(80);
 WiFiClient espClient;
 PubSubClient client(Mqtt_server, mqtt_port, espClient);
 unsigned long lastMsg = 0;
+long lastReconnectAttempt = 0;
+
 #define MSG_BUFFER_SIZE (50)
 char msg[MSG_BUFFER_SIZE];
 int value = 0;
@@ -70,6 +79,9 @@ void setup_wifi()
 
   randomSeed(micros());
 
+  client.setServer(Mqtt_server, mqtt_port);
+  client.setCallback(callback);
+
   Serial.println("");
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
@@ -87,46 +99,43 @@ void callback(char *topic, byte *payload, unsigned int length)
   }
   Serial.println();
 
-  // Switch on the LED if an 1 was received as first character
-  if ((char)payload[0] == '1')
+  if (mqtt_led_event_main.compare(topic) == 0 && length == 7)
   {
-    digitalWrite(BUILTIN_LED, LOW); // Turn the LED on (Note that LOW is the voltage level
-    // but actually the LED is on; this is because
-    // it is active low on the ESP-01)
+    uint8_t chars[length + 1];
+    memcpy(chars, payload, length);
+    // Serial.printf((char *)(uint8_t *)payload);
+    chars[length] = '\0';
+    setLEDColor(chars);
   }
-  else
+  else if (mqtt_led_event_level.compare(topic) == 0 && length <= 3)
   {
-    digitalWrite(BUILTIN_LED, HIGH); // Turn the LED off by making the voltage HIGH
+    String data;
+    for (int x = 0; x < length; x++)
+    {
+      if (!isdigit(payload[x]))
+        continue;
+      data += (char)payload[x];
+    }
+    Serial.print("Bright: ");
+    bright = data.toInt();
+    Serial.println(data);
+    LEDS.setBrightness(bright);
   }
 }
 
-void reconnect()
+boolean reconnect()
 {
-  // Loop until we're reconnected
-  while (!client.connected())
+  // Create a random client ID
+  String clientId = "ESP8266Client-";
+  clientId += String(random(0xffff), HEX);
+  // Attempt to connect
+  if (client.connect(clientId.c_str(), mqtt_username, mqtt_password))
   {
-    Serial.print("Attempting MQTT connection...");
-    // Create a random client ID
-    String clientId = "ESP8266Client-LED";
-    clientId += String(random(0xffff), HEX);
-    // Attempt to connect
-    if (client.connect(clientId.c_str(), mqtt_username, mqtt_password))
-    {
-      Serial.println("connected");
-      // Once connected, publish an announcement...
-      client.publish("outTopic", "Led arduino On");
-      // ... and resubscribe
-      client.subscribe("pod/0000/test");
-    }
-    else
-    {
-      Serial.print("failed, rc=");
-      Serial.print(client.state());
-      Serial.println(" try again in 5 seconds");
-      // Wait 5 seconds before retrying
-      delay(5000);
-    }
+    // ... and resubscribe
+    client.subscribe(mqtt_led_main);
+    client.subscribe(mqtt_led_level);
   }
+  return client.connected();
 }
 
 void setup()
@@ -139,9 +148,6 @@ void setup()
   LEDS.show();
 
   setup_wifi();
-
-  client.setServer(Mqtt_server, mqtt_port);
-  client.setCallback(callback);
 
   server.onNotFound([]()
                     {
@@ -159,22 +165,57 @@ void loop()
   webSocket.loop();
   server.handleClient();
   ledEffect(ledMode);
-
+  long now = millis();
   if (!client.connected())
   {
-    reconnect();
+    if (now - lastReconnectAttempt > 5000)
+    {
+      lastReconnectAttempt = now;
+      if (reconnect())
+      {
+        lastReconnectAttempt = 0;
+      }
+    }
   }
-  client.loop();
-  unsigned long now = millis();
-  if (now - lastMsg > 2000)
+  else
+  {
+    client.loop();
+  }
+  if (now - lastMsg > 5000)
   {
     lastMsg = now;
     ++value;
-    snprintf(msg, MSG_BUFFER_SIZE, "Led arduino On #%ld", value);
-    Serial.print("Publish message: ");
-    Serial.println(msg);
-    client.publish("outTopic", msg);
+    snprintf(msg, MSG_BUFFER_SIZE, "Led arduino Online #%ld", value);
+    // Serial.print("Publish message: ");
+    // Serial.println();
+    if (client.connected())
+    {
+      client.publish("outTopic", msg);
+    }
   }
+}
+
+void setLEDColor(uint8_t *payload)
+{
+  // convert to 24 bit color number
+  uint32_t rgb = (uint32_t)strtol((const char *)&payload[1], NULL, 16);
+
+  // convert 24 bits to 8 bits per channel
+  uint8_t r = abs(int(0 + (rgb >> 16) & 0xFF));
+  uint8_t g = abs(int(0 + (rgb >> 8) & 0xFF));
+  uint8_t b = abs(int(0 + (rgb >> 0) & 0xFF));
+
+  Serial.println((char *)payload);
+  Serial.print("ColorPicker: ");
+  Serial.print(r);
+  Serial.print(g);
+  Serial.println(b);
+
+  for (int x = 0; x < LED_COUNT; x++)
+  {
+    leds[x].setRGB(r, g, b);
+  }
+  LEDS.show();
 }
 
 // function for processing incoming messages
@@ -186,7 +227,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
     IPAddress ip = webSocket.remoteIP(num);
 
     String message = String("Connected");
-    webSocket.broadcastTXT(message); // отправляем последнее значение всем клиентам при подключении
+    webSocket.broadcastTXT(message); // send the last value to all clients on connection
   }
 
   if (type == WStype_TEXT)
@@ -228,24 +269,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length)
       }
       else
       {
-        //преобразуем в 24 битное цветовое число
-        uint32_t rgb = (uint32_t)strtol((const char *)&payload[1], NULL, 16);
-
-        //преобразуем 24 бит по 8 бит на канал
-        uint8_t r = abs(int(0 + (rgb >> 16) & 0xFF));
-        uint8_t g = abs(int(0 + (rgb >> 8) & 0xFF));
-        uint8_t b = abs(int(0 + (rgb >> 0) & 0xFF));
-
-        Serial.print("ColorPicker: ");
-        Serial.print(r);
-        Serial.print(g);
-        Serial.println(b);
-
-        for (int x = 0; x < LED_COUNT; x++)
-        {
-          leds[x].setRGB(r, g, b);
-        }
-        LEDS.show();
+        setLEDColor(payload);
       }
     }
   }
